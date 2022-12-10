@@ -20,49 +20,8 @@ use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
 use panic_halt as _;
 
-fn parse(input: &[u8], output: &mut [u8]) {
-    for (i, ch) in input.iter().enumerate() {
-        output[i] = *ch;
-    }
-}
-
-fn part1(puzzle: &[u8]) -> i32 {
-    let mut marker: [u8; 4] = puzzle[0..4].try_into().unwrap();
-    for (idx, ch) in puzzle.iter().enumerate() {
-        marker[idx % 4] = *ch;
-        let mut dup = false;
-        for i in 0..4 {
-            for j in i + 1..4 {
-                if marker[i] == marker[j] {
-                    dup = true;
-                }
-            }
-        }
-        if !dup {
-            return idx as i32 + 1;
-        }
-    }
-    0
-}
-
-fn part2(puzzle: &[u8]) -> i32 {
-    let mut marker: [u8; 14] = puzzle[0..14].try_into().unwrap();
-    for (idx, ch) in puzzle.iter().enumerate() {
-        marker[idx % 14] = *ch;
-        let mut dup = false;
-        for i in 0..14 {
-            for j in i + 1..14 {
-                if marker[i] == marker[j] {
-                    dup = true;
-                }
-            }
-        }
-        if !dup {
-            return idx as i32 + 1;
-        }
-    }
-    0
-}
+mod day06;
+use day06::{parse, part1, part2};
 
 #[entry]
 fn main() -> ! {
