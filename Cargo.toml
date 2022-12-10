@@ -1,6 +1,6 @@
 [package]
 authors = ["Tim Boldt <tim.boldt@gmail.com>"]
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 name = "aoc22-nostd"
 version = "0.1.0"
