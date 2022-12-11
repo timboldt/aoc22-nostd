@@ -13,14 +13,20 @@
 //  limitations under the License.
 
 #![warn(clippy::all)]
+#![no_std]
+#![no_main]
 
-pub fn parse(input: &[u8], output: &mut [u8]) {
+use cortex_m_rt::entry;
+use cortex_m_semihosting::{debug, hprintln};
+use panic_halt as _;
+
+fn parse(input: &[u8], output: &mut [u8]) {
     for (i, ch) in input.iter().enumerate() {
         output[i] = *ch;
     }
 }
 
-pub fn part1(puzzle: &[u8]) -> i32 {
+fn part1(puzzle: &[u8]) -> i32 {
     let mut marker: [u8; 4] = puzzle[0..4].try_into().unwrap();
     for (idx, ch) in puzzle.iter().enumerate() {
         marker[idx % 4] = *ch;
@@ -39,7 +45,7 @@ pub fn part1(puzzle: &[u8]) -> i32 {
     0
 }
 
-pub fn part2(puzzle: &[u8]) -> i32 {
+fn part2(puzzle: &[u8]) -> i32 {
     let mut marker: [u8; 14] = puzzle[0..14].try_into().unwrap();
     for (idx, ch) in puzzle.iter().enumerate() {
         marker[idx % 14] = *ch;
@@ -56,4 +62,21 @@ pub fn part2(puzzle: &[u8]) -> i32 {
         }
     }
     0
+}
+
+#[entry]
+fn main() -> ! {
+    let input = include_bytes!("../../input/06.txt");
+    let mut parsed = [b' '; 8192];
+    parse(input, &mut parsed);
+
+    let p1 = part1(&parsed);
+    hprintln!("Part 1: {:?}", p1).unwrap();
+
+    let p2 = part2(&parsed);
+    hprintln!("Part 2: {:?}", p2).unwrap();
+
+    // Exit QEMU.
+    debug::exit(debug::EXIT_SUCCESS);
+    loop {}
 }
