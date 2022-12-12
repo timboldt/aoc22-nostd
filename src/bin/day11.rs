@@ -19,28 +19,35 @@
 use atoi::atoi;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
-use panic_halt as _;
+use panic_semihosting as _;
 use safe_regex;
 
 const NUM_MONKEYS: usize = 8;
-const MAX_ITEMS: usize = 32;
+const MAX_ITEMS: usize = 64;
 const PARSE_SIZE: usize = 256;
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 struct Monkey {
     num_inspections: usize,
-    items: [usize; MAX_ITEMS],
+    items: [u64; MAX_ITEMS],
     op: MonkeyOp,
-    modulus: usize,
+    modulus: u64,
     if_true: usize,
     if_false: usize,
 }
+const DEFAULT_MONKEY: Monkey = Monkey {
+    num_inspections: 0,
+    items: [0; MAX_ITEMS],
+    op: MonkeyOp::Square,
+    modulus: 0,
+    if_true: 0,
+    if_false: 0,
+};
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 enum MonkeyOp {
-    Plus(usize),
-    Times(usize),
-    #[default]
+    Plus(u64),
+    Times(u64),
     Square,
 }
 
@@ -61,12 +68,12 @@ fn parse_monkey(input: &[u8], monkey: &mut Monkey) {
         num_inspections: 0,
         items: [0; MAX_ITEMS],
         op: match (operator, operand) {
-            (b"+", v) => MonkeyOp::Plus(atoi::<usize>(v).unwrap()),
+            (b"+", v) => MonkeyOp::Plus(atoi::<u64>(v).unwrap()),
             (b"*", b"old") => MonkeyOp::Square,
-            (b"*", v) => MonkeyOp::Times(atoi::<usize>(v).unwrap()),
+            (b"*", v) => MonkeyOp::Times(atoi::<u64>(v).unwrap()),
             _ => unreachable!(),
         },
-        modulus: atoi::<usize>(modulus).unwrap(),
+        modulus: atoi::<u64>(modulus).unwrap(),
         if_true: atoi::<usize>(if_true).unwrap(),
         if_false: atoi::<usize>(if_false).unwrap(),
     };
@@ -76,7 +83,7 @@ fn parse_monkey(input: &[u8], monkey: &mut Monkey) {
             b'0'..=b'9' => {
                 // HACK: This exploits the fact that all numbers are exactly two digits.
                 // TODO: Do the parsing correctly using atoi.
-                monkey.items[i / 2] += (b - b'0') as usize;
+                monkey.items[i / 2] += (b - b'0') as u64;
                 if i % 2 == 0 {
                     monkey.items[i / 2] *= 10;
                 }
@@ -108,11 +115,12 @@ fn parse(input: &[u8], monkeys: &mut [Monkey; NUM_MONKEYS]) {
     }
 }
 
-fn part1(parsed: &[Monkey]) -> usize {
-    let mut monkeys: [Monkey; NUM_MONKEYS] = Default::default();
+fn part1(parsed: &[Monkey]) -> u64 {
+    let mut monkeys: [Monkey; NUM_MONKEYS] = [DEFAULT_MONKEY; NUM_MONKEYS];
     for m in 0..NUM_MONKEYS {
         monkeys[m] = parsed[m].clone();
     }
+
     for _ in 0..20 {
         for m in 0..monkeys.len() {
             for i in 0..monkeys[m].items.len() {
@@ -148,62 +156,92 @@ fn part1(parsed: &[Monkey]) -> usize {
     }
 
     // Find the top two and multiply them together.
-    let mut top_two: [usize; 2] = [0; 2];
+    let mut top_two: [u64; 2] = [0; 2];
     for m in monkeys {
-        if m.num_inspections > top_two[0] {
+        if m.num_inspections as u64 > top_two[0] {
             if top_two[0] > top_two[1] {
                 top_two[1] = top_two[0];
             }
-            top_two[0] = m.num_inspections;
+            top_two[0] = m.num_inspections as u64;
             continue;
         }
-        if m.num_inspections > top_two[1] {
-            top_two[1] = m.num_inspections;
+        if m.num_inspections as u64 > top_two[1] {
+            top_two[1] = m.num_inspections as u64;
         }
     }
     top_two.iter().product()
 }
 
-/*
-fn part2(monkeys: &[Monkey]) -> usize {
-    let mut monkeys = monkeys.iter().cloned().collect_vec();
-    let modulus: usize = monkeys.iter().map(|m| m.modulus).product();
+fn part2(parsed: &[Monkey]) -> u64 {
+    let mut monkeys: [Monkey; NUM_MONKEYS] = [DEFAULT_MONKEY; NUM_MONKEYS];
+    for m in 0..NUM_MONKEYS {
+        monkeys[m] = parsed[m].clone();
+    }
+    let mod_product: u64 = monkeys.iter().map(|m| m.modulus).product();
+
     for _ in 0..10000 {
         for m in 0..monkeys.len() {
-            while let Some(w) = monkeys[m].items.pop() {
-                let worry = match monkeys[m].op {
-                    MonkeyOp::Plus(x) => w + x,
-                    MonkeyOp::Times(x) => w * x,
-                    MonkeyOp::Square => w * w,
-                };
-                let target = if worry % monkeys[m].modulus == 0 {
-                    monkeys[m].if_true
-                } else {
-                    monkeys[m].if_false
-                };
-                monkeys[target].items.push(worry % modulus);
-                monkeys[m].num_inspections += 1;
+            for i in 0..monkeys[m].items.len() {
+                let item = monkeys[m].items.get_mut(i).unwrap();
+                if *item != 0 {
+                    let w = *item;
+                    *item = 0;
+                    let worry = match monkeys[m].op {
+                        MonkeyOp::Plus(x) => w + x,
+                        MonkeyOp::Times(x) => w * x,
+                        MonkeyOp::Square => w * w,
+                    };
+                    let target = if worry % monkeys[m].modulus == 0 {
+                        monkeys[m].if_true
+                    } else {
+                        monkeys[m].if_false
+                    };
+                    let mut ok = false;
+                    for t in 0..monkeys[target].items.len() {
+                        if monkeys[target].items[t] == 0 {
+                            monkeys[target].items[t] = worry % mod_product;
+                            ok = true;
+                            break;
+                        }
+                    }
+                    if !ok {
+                        hprintln!("Monkey items overflow!").unwrap();
+                    }
+                    monkeys[m].num_inspections += 1;
+                }
             }
         }
     }
-    // Reverse sort.
-    monkeys.sort_by(|b, a| a.num_inspections.cmp(&b.num_inspections));
-    monkeys.iter().take(2).map(|m| m.num_inspections).product()
+
+    // Find the top two and multiply them together.
+    let mut top_two: [u64; 2] = [0; 2];
+    for m in monkeys {
+        if m.num_inspections as u64 > top_two[0] {
+            if top_two[0] > top_two[1] {
+                top_two[1] = top_two[0];
+            }
+            top_two[0] = m.num_inspections as u64;
+            continue;
+        }
+        if m.num_inspections as u64 > top_two[1] {
+            top_two[1] = m.num_inspections as u64;
+        }
+    }
+    top_two.iter().product()
 }
-*/
+
 #[entry]
 fn main() -> ! {
     let input = include_bytes!("../../input/11.txt");
 
-    let mut monkeys: &mut [Monkey; NUM_MONKEYS] = &mut Default::default();
+    let mut monkeys: &mut [Monkey; NUM_MONKEYS] = &mut [DEFAULT_MONKEY; NUM_MONKEYS];
     parse(input, &mut monkeys);
     let p1 = part1(monkeys);
     hprintln!("Part 1: {:?}", p1).unwrap();
-    /*
 
-        let p2 = part2(&parsed);
-        hprintln!("Part 2: {:?}", p2).unwrap();
-    */
+    let p2 = part2(monkeys);
+    hprintln!("Part 2: {:?}", p2).unwrap();
+
     // Exit QEMU.
     debug::exit(debug::EXIT_SUCCESS);
     loop {}
