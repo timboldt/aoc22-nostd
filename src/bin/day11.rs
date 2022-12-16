@@ -20,7 +20,6 @@ use atoi::atoi;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
 use panic_semihosting as _;
-use safe_regex;
 
 const NUM_MONKEYS: usize = 8;
 const MAX_ITEMS: usize = 64;
@@ -61,7 +60,7 @@ fn parse_monkey(input: &[u8], monkey: &mut Monkey) {
         };
     }
 
-    let re: safe_regex::Matcher7<_> = safe_regex::regex!(br"Monkey[ ]*([0-9]+):[ ]*Starting items:[ ]*(.*)[ ]*Operation: new = old (.) ([old0-9]+)[ ]*Test: divisible by ([0-9]+)[ ]*If true: throw to monkey ([0-9]+)[ ]*If false: throw to monkey ([0-9]+).*");
+    let re = safe_regex::regex!(br"Monkey[ ]*([0-9]+):[ ]*Starting items:[ ]*(.*)[ ]*Operation: new = old (.) ([old0-9]+)[ ]*Test: divisible by ([0-9]+)[ ]*If true: throw to monkey ([0-9]+)[ ]*If false: throw to monkey ([0-9]+).*");
     let (_, items, operator, operand, modulus, if_true, if_false) =
         re.match_slices(&flattened).unwrap();
     *monkey = Monkey {
@@ -99,7 +98,7 @@ fn parse(input: &[u8], monkeys: &mut [Monkey; NUM_MONKEYS]) {
     let mut start = 0;
     let mut end = 1;
 
-    for m in 0..NUM_MONKEYS {
+    for monkey in monkeys.iter_mut().take(NUM_MONKEYS) {
         // HACK: Manually split on double linefeed.
         for i in start + 1..start + PARSE_SIZE {
             end = i;
@@ -110,16 +109,14 @@ fn parse(input: &[u8], monkeys: &mut [Monkey; NUM_MONKEYS]) {
                 break;
             }
         }
-        parse_monkey(&input[start..end], &mut monkeys[m]);
+        parse_monkey(&input[start..end], monkey);
         start = end + 1;
     }
 }
 
 fn part1(parsed: &[Monkey]) -> u64 {
     let mut monkeys: [Monkey; NUM_MONKEYS] = [DEFAULT_MONKEY; NUM_MONKEYS];
-    for m in 0..NUM_MONKEYS {
-        monkeys[m] = parsed[m].clone();
-    }
+    monkeys[..NUM_MONKEYS].copy_from_slice(&parsed[..NUM_MONKEYS]);
 
     for _ in 0..20 {
         for m in 0..monkeys.len() {
@@ -174,9 +171,7 @@ fn part1(parsed: &[Monkey]) -> u64 {
 
 fn part2(parsed: &[Monkey]) -> u64 {
     let mut monkeys: [Monkey; NUM_MONKEYS] = [DEFAULT_MONKEY; NUM_MONKEYS];
-    for m in 0..NUM_MONKEYS {
-        monkeys[m] = parsed[m].clone();
-    }
+    monkeys[..NUM_MONKEYS].copy_from_slice(&parsed[..NUM_MONKEYS]);
     let mod_product: u64 = monkeys.iter().map(|m| m.modulus).product();
 
     for _ in 0..10000 {
@@ -234,8 +229,8 @@ fn part2(parsed: &[Monkey]) -> u64 {
 fn main() -> ! {
     let input = include_bytes!("../../input/11.txt");
 
-    let mut monkeys: &mut [Monkey; NUM_MONKEYS] = &mut [DEFAULT_MONKEY; NUM_MONKEYS];
-    parse(input, &mut monkeys);
+    let monkeys: &mut [Monkey; NUM_MONKEYS] = &mut [DEFAULT_MONKEY; NUM_MONKEYS];
+    parse(input, monkeys);
     let p1 = part1(monkeys);
     hprintln!("Part 1: {:?}", p1).unwrap();
 
@@ -244,5 +239,5 @@ fn main() -> ! {
 
     // Exit QEMU.
     debug::exit(debug::EXIT_SUCCESS);
-    loop {}
+    unreachable!()
 }

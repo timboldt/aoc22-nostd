@@ -78,5 +78,5 @@ fn main() -> ! {
 
     // Exit QEMU.
     debug::exit(debug::EXIT_SUCCESS);
-    loop {}
+    unreachable!()
 }
