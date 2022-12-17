@@ -60,6 +60,7 @@ fn parse_monkey(input: &[u8], monkey: &mut Monkey) {
         };
     }
 
+    #[allow(clippy::assign_op_pattern)]
     let re = safe_regex::regex!(br"Monkey[ ]*([0-9]+):[ ]*Starting items:[ ]*(.*)[ ]*Operation: new = old (.) ([old0-9]+)[ ]*Test: divisible by ([0-9]+)[ ]*If true: throw to monkey ([0-9]+)[ ]*If false: throw to monkey ([0-9]+).*");
     let (_, items, operator, operand, modulus, if_true, if_false) =
         re.match_slices(&flattened).unwrap();
