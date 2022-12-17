@@ -26,7 +26,7 @@ use nom::{
     sequence::terminated,
     IResult,
 };
-use panic_halt as _;
+use panic_semihosting as _;
 
 type Elf = u32;
 

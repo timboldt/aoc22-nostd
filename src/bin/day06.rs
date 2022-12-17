@@ -18,7 +18,7 @@
 
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
-use panic_halt as _;
+use panic_semihosting as _;
 
 fn parse(input: &[u8], output: &mut [u8]) {
     for (i, ch) in input.iter().enumerate() {
