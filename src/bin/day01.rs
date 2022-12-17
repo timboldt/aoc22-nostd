@@ -18,7 +18,7 @@
 
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
-use heapless::binary_heap::{BinaryHeap, Max};
+use heapless::binary_heap::{BinaryHeap, Min};
 use nom::{
     character::complete::{line_ending, u32},
     combinator::opt,
@@ -60,17 +60,24 @@ fn part1(i: &str) -> Elf {
 }
 
 fn part2(i: &str) -> Elf {
-    let mut heap: BinaryHeap<Elf, Max, 250> = BinaryHeap::new();
+    // To get the K largest values, use a min-heap of K+1 and keep pruning it to K.
+    const K: usize = 3;
+    let mut heap: BinaryHeap<Elf, Min, { K + 1 }> = BinaryHeap::new();
     let (_, _) = fold_many1(
         parse_elf,
         || 0,
         |_, val| {
-            heap.push(val).unwrap();
+            if val > *heap.peek().unwrap_or(&0) {
+                heap.push(val).unwrap();
+            }
+            if heap.len() > K {
+                heap.pop().unwrap();
+            }
             val
         },
     )(i)
     .unwrap();
-    heap.pop().unwrap() + heap.pop().unwrap() + heap.pop().unwrap()
+    heap.into_iter().sum()
 }
 
 #[entry]
